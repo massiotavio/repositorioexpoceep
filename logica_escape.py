@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-# Isso permite que o HTML do seu amigo converse com o Python
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,94 +13,119 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Criando os moldes de dados que o HTML vai mandar
-class RespostaGeometria(BaseModel):
-    sequencia: list[str]
-
-class RespostaSimples(BaseModel):
-    texto: str
-
-
-# O nosso "banco de dados" do jogo
+# ESTADO DO JOGO
 enigmas_concluidos = {
     "geometria": False,
     "fiacao": False,
-    "caixa": False,
+    "poema": False,
     "binario": False,
     "fuga": False
 }
 
-def verificar_geometria(sequencia_jogador):
-    # 1. A resposta certa (lista de strings)
-    resposta_certa = ["circulo", "triangulo", "quadrado", "pentagono"]
+# MOLDES DE DADOS
+class MoldeGeometria(BaseModel):
+    sequencia: list[str]
+
+class MoldeFiacao(BaseModel):
+    conexoes: list[str]
+
+class MoldePoema(BaseModel):
+    imagens: list[str]
+
+class MoldeBinario(BaseModel):
+    palavra: str
+
+class MoldeFuga(BaseModel):
+    confirmacao: str
+
+# LÓGICA DOS ENIGMAS
+
+# ENIGMA 1: Geometria (Ordem Atualizada!)
+def verificar_geometria(sequencia):
+    # Ordem nova: Triângulo -> Pentágono -> Quadrado -> Círculo
+    resposta_certa = ["triangulo", "pentagono", "quadrado", "circulo"]
     
-    # 2. Verifica se o jogador acertou
-    if sequencia_jogador == resposta_certa:
-        enigmas_concluidos["geometria"] = True  # Desbloqueia a próxima fase
+    if sequencia == resposta_certa:
+        enigmas_concluidos["geometria"] = True
         return "IDENTIFICAÇÃO CONCLUÍDA. Uma anomalia foi detectada no circuito de contenção. Verifique o sistema de distribuição de energia."
     else:
         return "ERRO: SEQUÊNCIA INCORRETA."
 
-def verificar_fiacao(codigo_jogador):
-    # 1. A TRAVA: O jogador só pode tentar se já passou da geometria
+# ENIGMA 2: Fiação (Among Us)
+def verificar_fiacao(conexoes):
     if not enigmas_concluidos["geometria"]:
         return "ACESSO NEGADO: Conclua a identificação biológica primeiro."
     
-    # 2. A RESPOSTA
-    resposta_certa = "4817"
+    resposta_certa = ["vermelho", "azul", "amarelo", "verde"]
     
-    # 3. A VERIFICAÇÃO
-    if codigo_jogador == resposta_certa:
+    if conexoes == resposta_certa:
         enigmas_concluidos["fiacao"] = True
-        return "CÓDIGO ACEITO: Caixa de segurança desbloqueada. Código da caixa: 4817"
+        return "ENERGIA RESTAURADA. CÓDIGO DE ACESSO: 7319. Caixa de segurança desbloqueada."
     else:
-        return "CÓDIGO INCORRETO. O sistema de energia continua offline."
+        return "CURTO-CIRCUITO! AS CONEXÕES ESTÃO ERRADAS."
 
-def verificar_pendrive(senha_digitada):
-    # 1. A TRAVA: O jogador só pode tentar se já passou da fiação
+# ENIGMA 3: Poema / Seleção de Imagens (RE4)
+def verificar_poema(imagens):
     if not enigmas_concluidos["fiacao"]:
-        return "ACESSO NEGADO: Conclua a fiação primeiro."
+        return "ACESSO NEGADO: Restaure a energia primeiro."
     
-    # 2. A RESPOSTA
-    senha_correta = "RESET"
+    # ⚠️ Lembre-se de trocar pelas 6 imagens e a ordem correta do poema de vocês!
+    resposta_certa = ["corvo", "caveira", "sol", "lua", "espada", "escudo"] 
     
-    # 3. A VERIFICAÇÃO
-    if senha_digitada.upper() == senha_correta:
-        enigmas_concluidos["binario"] = True
-        return "PENDRIVE ACESSADO: Dados recuperados com sucesso."
+    if imagens == resposta_certa:
+        enigmas_concluidos["poema"] = True
+        return "DISPOSITIVO DE ARMAZENAMENTO RECUPERADO. O formato de leitura foi alterado para BINÁRIO."
     else:
-        return "SENHA INCORRETA. Tente novamente."
+        return "SÍMBOLOS INCORRETOS. O MECANISMO NÃO SE MOVEU."
 
+# ENIGMA 4: Binário (CHRONOS)
+def verificar_binario(palavra):
+    if not enigmas_concluidos["poema"]:
+        return "ACESSO NEGADO: Conecte o dispositivo de armazenamento primeiro."
+    
+    resposta_certa = "CHRONOS"
+    
+    if palavra.upper() == resposta_certa:
+        enigmas_concluidos["binario"] = True
+        return "PROTOCOLO DE FUGA AUTORIZADO. Acesso ao terminal final liberado."
+    else:
+        return "DADOS INVÁLIDOS. Tente novamente."
+
+# ENIGMA 5: Fuga
 def iniciar_fuga(confirmacao):
     if not enigmas_concluidos["binario"]:
         return "ACESSO NEGADO: Conclua a recuperação de dados primeiro."
-    confirmacao = confirmacao.capitalize()
+    
+    confirmacao = confirmacao.capitalize() 
+    
     if confirmacao == "Sim" or confirmacao == "S":
         enigmas_concluidos["fuga"] = True
-        return "FUGA INICIADA: O sistema de contenção foi desativado. Saída liberada."
+        return "PROTOCOLO DE FUGA INICIADO. PORTA LIBERADA. VOCÊS ESCAPARAM!"
     else:
         return "Aguardando confirmação de desligamento..."
-    
-    
+
+# ==========================================
+# ROTAS DA API
+# ==========================================
+
 @app.post("/api/geometria")
-def api_geometria(dados: RespostaGeometria):
-    resultado = verificar_geometria(dados.sequencia)
-    return {"mensagem": resultado}
+def api_geometria(dados: MoldeGeometria):
+    return {"mensagem": verificar_geometria(dados.sequencia)}
 
 @app.post("/api/fiacao")
-def api_fiacao(dados: RespostaSimples):
-    resultado = verificar_fiacao(dados.texto)
-    return {"mensagem": resultado}
+def api_fiacao(dados: MoldeFiacao):
+    return {"mensagem": verificar_fiacao(dados.conexoes)}
 
-@app.post("/api/pendrive")
-def api_pendrive(dados: RespostaSimples):
-    resultado = verificar_pendrive(dados.texto)
-    return {"mensagem": resultado}
+@app.post("/api/poema")
+def api_poema(dados: MoldePoema):
+    return {"mensagem": verificar_poema(dados.imagens)}
+
+@app.post("/api/binario")
+def api_binario(dados: MoldeBinario):
+    return {"mensagem": verificar_binario(dados.palavra)}
 
 @app.post("/api/fuga")
-def api_fuga(dados: RespostaSimples):
-    resultado = iniciar_fuga(dados.texto)
-    return {"mensagem": resultado}
+def api_fuga(dados: MoldeFuga):
+    return {"mensagem": iniciar_fuga(dados.confirmacao)}
 
-# Essa linha mágica serve o HTML do seu amigo (que vai ficar na pasta 'static')
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
