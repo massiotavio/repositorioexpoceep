@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHRONOS LAB — Sistema de contenção temporal</title>
+
+<style>
+:root {
+ --site-primary:#00d9f5;
+ --site-secondary:#10283b;
+ --site-background:#070d16;
+ --site-on-primary:#031018;
+ --site-on-secondary:#e8f7ff;
+ --site-on-background:#e8f5ff;
+ --panel:#0d1a29;
+ --line:rgba(0,217,245,.24);
+ --muted:#7894aa;
+ --green:#43f5a2;
+ --red:#ff5364;
+ --amber:#ffc45c;
+}
+
+* {
+ box-sizing:border-box;
+}
+
+html,body {
+ margin:0;
+ min-height:100%;
+ background:var(--site-background);
+ color:var(--site-on-background);
+ font-family:ui-monospace,Consolas,monospace;
+}
+
+#app {
+ min-height:100vh;
+ padding:clamp(14px,3vw,34px);
+ position:relative;
+ overflow:hidden;
+}
+
+#app:before {
+ content:"";
+ position:absolute;
+ inset:0;
+ pointer-events:none;
+ opacity:.17;
+ background-image:
+ linear-gradient(rgba(0,217,245,.08) 1px,transparent 1px),
+ linear-gradient(90deg,rgba(0,217,245,.08) 1px,transparent 1px);
+ background-size:42px 42px;
+}
+
+.shell {
+ position:relative;
+ max-width:1180px;
+ margin:auto;
+ min-height:calc(100vh - 68px);
+ border:1px solid var(--line);
+ background:linear-gradient(145deg,#0d1a29,#060f19);
+ box-shadow:0 0 50px rgba(0,217,245,.07);
+ display:flex;
+ flex-direction:column;
+}
+
+.topbar {
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:16px;
+ padding:18px 24px;
+ border-bottom:1px solid var(--line);
+ flex-wrap:wrap;
+}
+
+.brand {
+ font-weight:bold;
+ letter-spacing:.22em;
+ color:var(--site-primary);
+}
+
+.brand small {
+ display:block;
+ color:var(--muted);
+ font-size:10px;
+ margin-top:5px;
+}
+
+.online {
+ font-size:11px;
+ color:var(--green);
+ letter-spacing:.12em;
+}
+
+.online:before {
+ content:"";
+ display:inline-block;
+ width:7px;
+ height:7px;
+ border-radius:50%;
+ background:var(--green);
+ box-shadow:0 0 12px var(--green);
+ margin-right:9px;
+}
+
+main {
+ flex:1;
+ padding:clamp(22px,5vw,58px);
+}
+
+.screen {
+ display:none;
+ animation:appear .45s ease;
+}
+
+.screen.active {
+ display:block;
+}
+
+@keyframes appear {
+ from {opacity:0;transform:translateY(10px)}
+ to {opacity:1;transform:none}
+}
+
+.eyebrow {
+ font-size:10px;
+ letter-spacing:.24em;
+ color:var(--muted);
+ margin:0 0 15px;
+}
+
+.hero {
+ text-align:center;
+ max-width:760px;
+ margin:3vh auto;
+}
+
+.hero h1 {
+ font:800 clamp(34px,7vw,72px) Arial,sans-serif;
+ letter-spacing:.08em;
+ color:var(--site-primary);
+ text-shadow:0 0 26px rgba(0,217,245,.28);
+ margin:0 0 16px;
+}
+
+.hero h2,.screen h2 {
+ font:700 clamp(21px,3vw,32px) Arial,sans-serif;
+ letter-spacing:.08em;
+ margin:0 0 22px;
+}
+
+.hero .sub {
+ color:#9db5c8;
+ letter-spacing:.22em;
+ font-size:11px;
+}
+
+.alert {
+ display:inline-block;
+ border:1px solid var(--red);
+ color:var(--red);
+ padding:10px 16px;
+ font-size:11px;
+ letter-spacing:.14em;
+ margin:26px 0;
+ animation:pulse 2s infinite;
+}
+
+@keyframes pulse {
+ 50% {opacity:.55;box-shadow:0 0 18px rgba(255,83,100,.2)}
+}
+
+.lead {
+ color:#9bb0c1;
+ line-height:1.8;
+ max-width:590px;
+ margin:0 auto 30px;
+ font-size:13px;
+}
+
+.btn {
+ border:1px solid var(--site-primary);
+ background:transparent;
+ color:var(--site-primary);
+ padding:14px 22px;
+ font:bold 11px monospace;
+ letter-spacing:.12em;
+ cursor:pointer;
+ transition:.2s;
+}
+
+.btn:hover,.btn:focus-visible {
+ background:var(--site-primary);
+ color:#04121a;
+ box-shadow:0 0 24px rgba(0,217,245,.28);
+ outline:none;
+}
+
+.btn:disabled {
+ opacity:.35;
+ cursor:not-allowed;
+}
+
+.btn.secondary {
+ border-color:#466176;
+ color:#9ab4c8;
+}
+
+.btn.green {
+ border-color:var(--green);
+ color:var(--green);
+}
+
+.btn.green:hover {
+ background:var(--green);
+ color:#06140f;
+}
+
+.panel {
+ border:1px solid var(--line);
+ background:rgba(9,22,35,.82);
+ padding:clamp(18px,3vw,30px);
+ max-width:850px;
+ margin:auto;
+}
+
+.panel-head {
+ display:flex;
+ justify-content:space-between;
+ gap:14px;
+ align-items:center;
+ border-bottom:1px solid var(--line);
+ padding-bottom:16px;
+ margin-bottom:22px;
+ flex-wrap:wrap;
+}
+
+.panel-head strong {
+ font:bold 12px Arial,sans-serif;
+ letter-spacing:.13em;
+ color:var(--site-primary);
+}
+
+.tag {
+ font-size:9px;
+ color:var(--green);
+ border:1px solid rgba(67,245,162,.35);
+ padding:6px 9px;
+}
+
+.prompt {
+ font-size:13px;
+ line-height:1.8;
+ color:#b8cad8;
+ margin:0 0 24px;
+}
+
+.symbol-slots {
+ display:flex;
+ justify-content:center;
+ gap:12px;
+ margin:26px 0;
+}
+
+.slot {
+ width:66px;
+ height:66px;
+ border:1px dashed #456174;
+ display:grid;
+ place-items:center;
+ color:var(--site-primary);
+ font-size:29px;
+}
+
+.slot.filled {
+ border-style:solid;
+ background:rgba(0,217,245,.08);
+}
+
+.symbol-options {
+ display:flex;
+ justify-content:center;
+ gap:12px;
+ flex-wrap:wrap;
+}
+
+.symbol {
+ width:76px;
+ height:76px;
+ border:1px solid var(--line);
+ background:#0b1b2a;
+ display:grid;
+ place-items:center;
+ cursor:pointer;
+ transition:.2s;
+}
+
+.symbol:hover {
+ border-color:var(--site-primary);
+ box-shadow:0 0 18px rgba(0,217,245,.2);
+}
+
+.shape {
+ width:30px;
+ height:30px;
+ background:var(--site-primary);
+ filter:drop-shadow(0 0 7px rgba(0,217,245,.55));
+}
+
+.circle {
+ border-radius:50%;
+}
+
+.triangle {
+ clip-path:polygon(50% 0,0 100%,100% 100%);
+}
+
+.square {
+ width:28px;
+ height:28px;
+}
+
+.pentagon {
+ clip-path:polygon(50% 0,100% 38%,81% 100%,19% 100%,0 38%);
+}
+
+.actions {
+ display:flex;
+ justify-content:center;
+ gap:10px;
+ flex-wrap:wrap;
+ margin-top:24px;
+}
+
+.feedback {
+ min-height:22px;
+ text-align:center;
+ margin-top:18px;
+ font-size:11px;
+ color:var(--muted);
+}
+
+.feedback.good {
+ color:var(--green);
+}
+
+.feedback.bad {
+ color:var(--red);
+}
+
+.circuit-wrap {
+ display:grid;
+ grid-template-columns:1fr 210px;
+ gap:24px;
+ align-items:center;
+}
+
+.circuit {
+ display:grid;
+ grid-template-columns:repeat(2,minmax(110px,1fr));
+ gap:12px;
+}
+
+.node {
+ border:1px solid #294458;
+ background:#0a1826;
+ padding:18px 12px;
+ text-align:center;
+ color:#91aabd;
+ cursor:pointer;
+ font-size:11px;
+}
+
+.node b {
+ display:block;
+ font-size:21px;
+ color:var(--amber);
+ margin-bottom:8px;
+}
+
+.node.on {
+ border-color:var(--green);
+ color:var(--green);
+ box-shadow:0 0 15px rgba(67,245,162,.12);
+}
+
+.node.on b {
+ color:var(--green);
+}
+
+.readout {
+ border:1px solid var(--line);
+ padding:18px;
+ text-align:center;
+}
+
+.readout small {
+ color:var(--muted);
+ font-size:9px;
+}
+
+.readout strong {
+ display:block;
+ font:bold 28px Arial;
+ color:var(--site-primary);
+ margin:12px 0;
+}
+
+.readout p {
+ font-size:10px;
+ color:var(--muted);
+ line-height:1.6;
+}
+
+.keypad {
+ max-width:270px;
+ margin:20px auto;
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:9px;
+}
+
+.key {
+ padding:15px;
+ border:1px solid #345269;
+ background:#0a1927;
+ color:#dff8ff;
+ font:bold 16px monospace;
+ cursor:pointer;
+}
+
+.key:hover {
+ border-color:var(--site-primary);
+ color:var(--site-primary);
+}
+
+.code-display {
+ max-width:270px;
+ margin:auto;
+ border:1px solid var(--line);
+ padding:14px;
+ text-align:center;
+ color:var(--site-primary);
+ font-size:22px;
+ letter-spacing:.5em;
+ min-height:54px;
+}
+
+.binary {
+ background:#06120f;
+ border:1px solid rgba(67,245,162,.25);
+ color:var(--green);
+ padding:18px;
+ text-align:center;
+ line-height:2;
+ letter-spacing:.14em;
+ overflow-wrap:anywhere;
+ font-size:clamp(11px,2vw,15px);
+}
+
+.decode-input {
+ display:block;
+ width:min(100%,360px);
+ margin:20px auto 0;
+ background:#071521;
+ border:1px solid #345269;
+ color:#eaf6ff;
+ padding:14px;
+ font:13px monospace;
+ text-align:center;
+ outline:none;
+}
+
+.decode-input:focus {
+ border-color:var(--site-primary);
+}
+
+.progress {
+ display:flex;
+ gap:6px;
+ justify-content:center;
+ margin:0 0 25px;
+}
+
+.progress span {
+ height:3px;
+ width:35px;
+ background:#233a4d;
+}
+
+.progress span.done {
+ background:var(--green);
+ box-shadow:0 0 8px var(--green);
+}
+
+.footer {
+ padding:14px 24px;
+ border-top:1px solid var(--line);
+ display:flex;
+ justify-content:space-between;
+ gap:12px;
+ flex-wrap:wrap;
+ color:#526d82;
+ font-size:9px;
+}
+
+.final {
+ text-align:center;
+ padding:35px 10px;
+}
+
+.final-mark {
+ font-size:48px;
+ color:var(--green);
+ text-shadow:0 0 25px rgba(67,245,162,.3);
+ margin-bottom:20px;
+}
+
+.final h2 {
+ color:var(--green);
+}
+
+@media(max-width:650px) {
+ .circuit-wrap {
+  grid-template-columns:1fr;
+ }
+ .readout {
+  max-width:none;
+ }
+ .topbar {
+  padding:15px;
+ }
+ .symbol-slots {
+  gap:7px;
+ }
+ .slot {
+  width:55px;
+  height:55px;
+ }
+}
+</style>
+</head>
+
+<body>
+<div id="app">
+<div class="shell">
+
+<header class="topbar">
+ <div class="brand">
+  CHRONOS LAB
+  <small>TEMPORAL SECURITY DIVISION // 01</small>
+ </div>
+ <div class="online" id="online">SYSTEM ONLINE</div>
+</header>
+
+<main>
+
+<div class="progress" id="progress">
+ <span class="done"></span>
+ <span></span>
+ <span></span>
+ <span></span>
+ <span></span>
+ <span></span>
+</div>
+
+<!-- TELA INICIAL -->
+<section class="screen active" id="s0">
+ <div class="hero">
+  <p class="eyebrow">PROTOCOL 001 // EMERGENCY CONTAINMENT</p>
+  <h1>CHRONOS LAB</h1>
+  <p class="sub">SISTEMA DE CONTENÇÃO TEMPORAL</p>
+
+  <div class="alert">FALHA CRÍTICA DETECTADA</div>
+
+  <p class="lead">
+   Quatro organismos foram recuperados de uma região desconhecida do espaço.
+   Os sistemas de segurança entraram em colapso.
+   Restaure os protocolos para liberar o laboratório.
+  </p>
+
+  <button class="btn" onclick="go(1)">
+   INICIAR DIAGNÓSTICO ↗
+  </button>
+ </div>
+</section>
+
+<!-- ENIGMA 1 -->
+<section class="screen active" id="s1">
+ <div class="panel">
+
+  <div class="panel-head">
+   <strong>BIOLOGICAL IDENTIFICATION</strong>
+  </div>
+
+  <!-- TEXTO DE INSTRUÇÃO E INDICADOR REMOVIDOS -->
+
+  <div class="symbol-slots" id="slots"></div>
+  <div class="symbol-options" id="symbolOptions"></div>
+
+  <div class="actions">
+   <button class="btn secondary" onclick="resetSymbols()">LIMPAR</button>
+   <button class="btn" onclick="checkSymbols()">CONFIRMAR SEQUÊNCIA</button>
+  </div>
+
+  <div class="feedback" id="f1">AGUARDANDO IDENTIFICAÇÃO...</div>
+ </div>
+</section>
+
+<!-- ENIGMA 2 -->
+<section class="screen" id="s2">
+ <div class="panel">
+
+  <div class="panel-head">
+   <strong>ENERGY DISTRIBUTION SYSTEM</strong>
+   <span class="tag">ENIGMA 02 / 04</span>
+  </div>
+
+  <p class="prompt">
+   CIRCUIT FAILURE DETECTED.
+   Reative os quatro módulos de energia.
+   Clique em cada módulo para conectar os circuitos.
+  </p>
+
+  <div class="circuit-wrap">
+   <div class="circuit" id="circuit"></div>
+
+   <div class="readout">
+    <small>ENERGY OUTPUT</small>
+    <strong id="energy">00%</strong>
+    <p id="circuitStatus">
+     4 MÓDULOS OFFLINE
+     <br>AGUARDANDO CONEXÃO
+    </p>
+   </div>
+  </div>
+
+  <div class="actions">
+   <button class="btn secondary" onclick="resetCircuit()">REINICIAR CIRCUITO</button>
+   <button class="btn" onclick="checkCircuit()">VALIDAR SISTEMA</button>
+  </div>
+
+  <div class="feedback" id="f2">STATUS: DESCONECTADO</div>
+ </div>
+</section>
+
+<!-- ENIGMA 3 -->
+<section class="screen" id="s3">
+ <div class="panel">
+
+  <div class="panel-head">
+   <strong>SECURITY ACCESS</strong>
+   <span class="tag">ENIGMA 03 / 04</span>
+  </div>
+
+  <p class="prompt" style="text-align:center">
+   INSIRA O CÓDIGO DE AUTORIZAÇÃO
+   <br>
+   <span style="color:var(--muted);font-size:11px">
+    Acesso ao dispositivo de armazenamento
+   </span>
+  </p>
+
+  <div class="code-display" id="codeDisplay">_ _ _ _</div>
+  <div class="keypad" id="keypad"></div>
+
+  <div class="actions">
+   <button class="btn secondary" onclick="clearCode()">APAGAR</button>
+   <button class="btn" onclick="checkCode()">AUTENTICAR</button>
+  </div>
+
+  <div class="feedback" id="f3">4 DÍGITOS NECESSÁRIOS</div>
+ </div>
+</section>
+
+<!-- ENIGMA 4 -->
+<section class="screen" id="s4">
+ <div class="panel">
+
+  <div class="panel-head">
+   <strong>DATA DECRYPTION</strong>
+   <span class="tag">ENIGMA 04 / 04</span>
+  </div>
+
+  <p class="prompt">
+   BINARY ENCODING DETECTED.
+   Decodifique a mensagem binária e insira a palavra identificada.
+  </p>
+
+  <div class="binary">
+   01000011&nbsp; 01001000&nbsp; 01010010&nbsp; 01001111
+   <br>
+   01001110&nbsp; 01001111&nbsp; 01010011
+  </div>
+
+  <p style="text-align:center;color:var(--muted);font-size:10px;margin:14px 0 0">
+   ASCII // 8-BIT CHARACTER ENCODING
+  </p>
+
+  <input
+   class="decode-input"
+   id="decodeInput"
+   maxlength="20"
+   placeholder="DIGITE A PALAVRA DECODIFICADA"
+   autocomplete="off"
+  >
+
+  <div class="actions">
+   <button class="btn" onclick="checkDecode()">DECRYPT DATA</button>
+  </div>
+
+  <div class="feedback" id="f4">
+   AGUARDANDO CHAVE DE DECODIFICAÇÃO
+  </div>
+ </div>
+</section>
+
+<!-- TELA FINAL -->
+<section class="screen" id="s5">
+ <div class="panel final">
+
+  <div class="final-mark">◈</div>
+
+  <p class="eyebrow">TEMPORAL ESCAPE PROTOCOL</p>
+
+  <h2>ESCAPE SEQUENCE READY</h2>
+
+  <p class="lead">
+   ALL SECURITY SYSTEMS RESTORED
+   <br>
+   O protocolo de contenção foi concluído.
+   O laboratório está pronto para ser liberado.
+  </p>
+
+  <button class="btn green" id="shutdown" onclick="shutdown()">
+   INITIATE SHUTDOWN
+  </button>
+
+  <div class="feedback" id="f5">AGUARDANDO COMANDO FINAL</div>
+ </div>
+</section>
+
+</main>
+
+<footer class="footer">
+ <span>CHRONOS LAB // TEMPORAL SECURITY</span>
+ <span id="clock">SYSTEM TIME // --:--:--</span>
+</footer>
+
+</div>
+</div>
+
+<script>
+let symbolSeq = [];
+let circuitOn = [false,false,false,false];
+let code = '';
+
+function go(n) {
+ document.querySelectorAll('.screen').forEach(x =>
+  x.classList.remove('active')
+ );
+
+ document.getElementById('s'+n).classList.add('active');
+
+ document.querySelectorAll('#progress span').forEach((x,i) =>
+  x.classList.toggle('done',i<=n)
+ );
+
+ document.getElementById('online').textContent =
+  n===5 ? 'ALL SYSTEMS RESTORED' : 'SYSTEM ONLINE';
+
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+
+const symbols = [
+ {name:'CÍRCULO',shape:'circle',v:'●'},
+ {name:'TRIÂNGULO',shape:'triangle',v:'▲'},
+ {name:'QUADRADO',shape:'square',v:'■'},
+ {name:'PENTÁGONO',shape:'pentagon',v:'⬟'}
+];
+
+function renderSymbols() {
+ document.getElementById('symbolOptions').innerHTML =
+  symbols.map((s,i)=>`
+   <button class="symbol" aria-label="${s.name}" onclick="pickSymbol(${i})">
+    <span class="shape ${s.shape}"></span>
+   </button>
+  `).join('');
+
+ document.getElementById('slots').innerHTML =
+  Array.from({length:4},(_,i)=>`
+   <div class="slot ${symbolSeq[i]!==undefined?'filled':''}">
+    ${symbolSeq[i]!==undefined?symbols[symbolSeq[i]].v:'_'}
+   </div>
+  `).join('');
+}
+
+function pickSymbol(i) {
+ if(symbolSeq.length<4) {
+  symbolSeq.push(i);
+  renderSymbols();
+ }
+}
+
+function resetSymbols() {
+ symbolSeq=[];
+ renderSymbols();
+ document.getElementById('f1').textContent='SEQUÊNCIA LIMPA';
+ document.getElementById('f1').className='feedback';
+}
+
+function checkSymbols() {
+
+ // NOVA SEQUÊNCIA:
+ // TRIÂNGULO → PENTÁGONO → QUADRADO → CÍRCULO
+
+ if(symbolSeq.join(',')==='1,3,2,0') {
+  good('f1','IDENTIFICAÇÃO CONFIRMADA // ACCESS GRANTED');
+  setTimeout(()=>go(2),850);
+ } else {
+  bad('f1','SEQUÊNCIA INVÁLIDA // TENTE NOVAMENTE');
+ }
+}
+
+function renderCircuit() {
+ document.getElementById('circuit').innerHTML =
+  circuitOn.map((v,i)=>`
+   <button class="node ${v?'on':''}" onclick="toggleCircuit(${i})">
+    <b>${v?'●':'○'}</b>
+    MÓDULO ${String(i+1).padStart(2,'0')}
+    <br>
+    ${v?'CONNECTED':'OFFLINE'}
+   </button>
+  `).join('');
+
+ let n=circuitOn.filter(Boolean).length;
+
+ document.getElementById('energy').textContent =
+  String(n*25).padStart(2,'0')+'%';
+
+ document.getElementById('circuitStatus').innerHTML =
+  `${4-n} MÓDULOS OFFLINE<br>
+  ${n===4?'DISTRIBUIÇÃO ESTÁVEL':'AGUARDANDO CONEXÃO'}`;
+}
+
+function toggleCircuit(i) {
+ circuitOn[i]=!circuitOn[i];
+ renderCircuit();
+}
+
+function resetCircuit() {
+ circuitOn=[false,false,false,false];
+ renderCircuit();
+ document.getElementById('f2').textContent='CIRCUITO REINICIADO';
+ document.getElementById('f2').className='feedback';
+}
+
+function checkCircuit() {
+ if(circuitOn.every(Boolean)) {
+  good('f2','ENERGIA RESTAURADA // CÓDIGO DE ACESSO: 7319');
+  setTimeout(()=>go(3),1200);
+ } else {
+  bad('f2','FALHA DE DISTRIBUIÇÃO // CONECTE TODOS OS MÓDULOS');
+ }
+}
+
+function renderCode() {
+ document.getElementById('codeDisplay').textContent =
+  code.padEnd(4,'_').split('').join(' ');
+}
+
+function addDigit(d) {
+ if(code.length<4) {
+  code+=d;
+  renderCode();
+ }
+}
+
+function clearCode() {
+ code='';
+ renderCode();
+ document.getElementById('f3').textContent='4 DÍGITOS NECESSÁRIOS';
+ document.getElementById('f3').className='feedback';
+}
+
+function checkCode() {
+ if(code==='7319') {
+  good('f3','ACCESS GRANTED // STORAGE DEVICE RECOVERED');
+  setTimeout(()=>go(4),900);
+ } else {
+  bad('f3','ACCESS DENIED // CÓDIGO INCORRETO');
+ }
+}
+
+function checkDecode() {
+ const v=document.getElementById('decodeInput').value.trim().toUpperCase();
+
+ if(v==='CHRONOS') {
+  good('f4','DATA DECRYPTED // PROTOCOLO FINAL AUTORIZADO');
+  setTimeout(()=>go(5),900);
+ } else {
+  bad('f4','DECRYPTION FAILED // VERIFIQUE A CONVERSÃO ASCII');
+ }
+}
+
+function good(id,msg) {
+ let e=document.getElementById(id);
+ e.textContent=msg;
+ e.className='feedback good';
+}
+
+function bad(id,msg) {
+ let e=document.getElementById(id);
+ e.textContent=msg;
+ e.className='feedback bad';
+}
+
+function shutdown() {
+ document.getElementById('shutdown').disabled=true;
+ document.getElementById('shutdown').textContent='SHUTTING DOWN...';
+
+ document.getElementById('online').textContent='SYSTEM OFFLINE';
+
+ let f=document.getElementById('f5');
+ f.textContent='LABORATORY UNLOCKED // EXPERIMENT COMPLETE';
+ f.className='feedback good';
+
+ document.querySelector('.shell').style.borderColor=
+  'rgba(67,245,162,.6)';
+}
+
+function tick() {
+ document.getElementById('clock').textContent=
+  'SYSTEM TIME // '+new Date().toLocaleTimeString('pt-BR',{hour12:false});
+}
+
+renderSymbols();
+renderCircuit();
+
+document.getElementById('keypad').innerHTML =
+ ['1','2','3','4','5','6','7','8','9','','0','⌫']
+ .map(k=>k?
+  `<button class="key" onclick="${
+   k==='⌫'?'code=code.slice(0,-1);renderCode()':`addDigit('${k}')`
+  }">${k}</button>`:
+  '<span></span>'
+ ).join('');
+
+tick();
+setInterval(tick,1000);
+
+document.getElementById('decodeInput').addEventListener('keydown',e=>{
+ if(e.key==='Enter') checkDecode();
+});
+</script>
+
+</body>
+</html>
