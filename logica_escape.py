@@ -1,8 +1,10 @@
-import json, os, time
-from fastapi import FastAPI
+import os, secrets, time
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+import banco
 
 PASTA = os.path.dirname(os.path.abspath(__file__))
 
@@ -27,20 +29,21 @@ enigmas_concluidos = {
     "fuga": False
 }
 
-# RANKING (salvo em ranking.json, ao lado deste arquivo)
-ARQUIVO_RANKING = os.path.join(PASTA, "ranking.json")
+# RANKING (banco SQLite: ranking.db, ao lado deste arquivo; o ranking.json antigo é importado sozinho)
+banco.iniciar_banco()
 partida = {"grupo": "", "inicio": None, "tempo": None, "id": None}
 
-def ler_ranking():
-    try:
-        with open(ARQUIVO_RANKING, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return []
+# Tempo máximo do jogo (igual ao timer do navegador) + folga para a latência da rede.
+# Partidas acima disso não entram no ranking.
+LIMITE_TEMPO = 600
+TOLERANCIA = 15
 
-def salvar_ranking(lista):
-    with open(ARQUIVO_RANKING, "w", encoding="utf-8") as f:
-        json.dump(lista, f, ensure_ascii=False, indent=2)
+# Senha para apagar itens do ranking. Troque aqui ou defina a variável de ambiente ADMIN_SENHA.
+ADMIN_SENHA = os.environ.get("ADMIN_SENHA", "chronos-admin")
+
+def exigir_senha(senha):
+    if not senha or not secrets.compare_digest(senha, ADMIN_SENHA):
+        raise HTTPException(status_code=401, detail="SENHA INCORRETA")
 
 def reiniciar_estado():
     for chave in enigmas_concluidos:
@@ -144,10 +147,8 @@ def iniciar_fuga(confirmacao):
             # O tempo é medido aqui no servidor (começa em /api/iniciar), não pelo navegador
             if partida["inicio"] is not None:
                 partida["tempo"] = int(time.time() - partida["inicio"])
-                partida["id"] = int(time.time() * 1000)
-                lista = ler_ranking()
-                lista.append({"id": partida["id"], "grupo": partida["grupo"], "tempo": partida["tempo"]})
-                salvar_ranking(lista)
+                if partida["tempo"] <= LIMITE_TEMPO + TOLERANCIA:
+                    partida["id"] = banco.adicionar(partida["grupo"], partida["tempo"])
         return "PROTOCOLO DE FUGA INICIADO. PORTA LIBERADA. VOCÊS ESCAPARAM!"
     return "Aguardando confirmação de desligamento..."
 
@@ -163,8 +164,18 @@ def api_iniciar(dados: MoldeInicio):
 
 @app.get("/api/ranking")
 def api_ranking():
-    lista = sorted(ler_ranking(), key=lambda r: r["tempo"])
-    return {"ranking": lista[:20]}
+    return {"ranking": banco.listar(20)}
+
+# ADMIN: apagar do ranking (precisa do cabeçalho  x-senha)
+@app.delete("/api/ranking/{id_}")
+def api_apagar_ranking(id_: int, x_senha: str = Header(default="")):
+    exigir_senha(x_senha)
+    return {"apagados": banco.apagar(id_)}
+
+@app.delete("/api/ranking")
+def api_limpar_ranking(x_senha: str = Header(default="")):
+    exigir_senha(x_senha)
+    return {"apagados": banco.limpar()}
 
 @app.post("/api/geometria")
 def api_geometria(dados: MoldeGeometria):
