@@ -235,7 +235,7 @@
         if(m==='ERRO_CONEXAO'){bad('f5','SEM CONEXÃO COM O SERVIDOR');return;}
         if(m.includes('ABERTO')){good('f5','CADEADO ABERTO // TRINCO LIBERADO');body.classList.add('ok');document.getElementById('shackle').classList.add('open');setTimeout(()=>go(6),1300);}
         else if(m.includes('ACESSO NEGADO')){bad('f5','ACESSO NEGADO // '+m.replace('ACESSO NEGADO: ','').toUpperCase());}
-        else{bad('f5','COMBINAÇÃO INCORRETA // O CADEADO PERMANECE TRANCADO');body.classList.remove('shake');void body.offsetWidth;body.classList.add('shake');}
+        else{const dbg=location.search.includes('debug')?' [DEBUG ENVIADO: '+lockVals.map(v=>v+'='+DIAL_NAMES[v]).join(' | ')+']':'';bad('f5','COMBINAÇÃO INCORRETA // O CADEADO PERMANECE TRANCADO'+dbg);body.classList.remove('shake');void body.offsetWidth;body.classList.add('shake');}
     }
 
     async function post(rota,corpo){try{const r=await fetch(rota,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(corpo||{})});const d=await r.json();ultimaResp=d;return d.mensagem||'';}catch(e){return 'ERRO_CONEXAO';}}

@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+PASTA = os.path.dirname(os.path.abspath(__file__))
+
 app = FastAPI()
 
 app.add_middleware(
@@ -26,7 +28,7 @@ enigmas_concluidos = {
 }
 
 # RANKING (salvo em ranking.json, ao lado deste arquivo)
-ARQUIVO_RANKING = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ranking.json")
+ARQUIVO_RANKING = os.path.join(PASTA, "ranking.json")
 partida = {"grupo": "", "inicio": None, "tempo": None, "id": None}
 
 def ler_ranking():
@@ -58,7 +60,7 @@ class MoldeCaixa(BaseModel):
     codigo: str
 
 class MoldePoema(BaseModel):
-    sequencia: list[str] # Nomes dos arquivos das imagens, ex: "grok", "vortex"
+    sequencia: list[str]  # nomes dos símbolos, ex: "correta_estrela", "vortex"
 
 class MoldeBinario(BaseModel):
     palavra: str
@@ -98,20 +100,18 @@ def verificar_caixa(codigo):
         return "ACCESS GRANTED. Caixa de segurança aberta."
     return "ACCESS DENIED. CÓDIGO INCORRETO."
 
-# ENIGMA 4: Poema / Seleção de Imagens (RE4)
+# ENIGMA (físico): Poema "Primor da Tecnologia"
+# O poema é resolvido no papel. Esta verificação é independente: nenhum outro enigma
+# depende dela, então não interfere no andamento do jogo.
+# Ordem: estrela (estrofe 1) -> lua cortada (2) -> buraco negro/grok (3) -> vórtice (4)
 def verificar_poema(sequencia):
-    if not enigmas_concluidos["fiacao"]:
-        return "ACESSO NEGADO: Restaure a energia primeiro."
-    
-    # Ordem correta baseada no poema
-    resposta_certa = ["estrela_dupla", "circulo_corte", "estrela_circulo", "vortex"]
-    
+    resposta_certa = ["correta_estrela", "correta_luacortada", "grok", "vortex"]
     if sequencia == resposta_certa:
         enigmas_concluidos["poema"] = True
-        return "DISPOSITIVO DE ARMAZENAMENTO RECUPERADO. O formato de leitura foi alterado para BINÁRIO."
+        return "SÍMBOLOS CONFIRMADOS. O poema foi decifrado."
     return "SÍMBOLOS INCORRETOS. O MECANISMO NÃO SE MOVEU."
 
-# ENIGMA 5: Binário
+# ENIGMA 4: Binário
 def verificar_binario(palavra):
     if not enigmas_concluidos["caixa"]:
         return "ACESSO NEGADO: Abra a caixa de segurança primeiro."
@@ -121,7 +121,7 @@ def verificar_binario(palavra):
         return "PROTOCOLO DE FUGA AUTORIZADO. Acesso ao terminal final liberado."
     return "DADOS INVÁLIDOS. Tente novamente."
 
-# ENIGMA 6: Cadeado Físico
+# ENIGMA 5: Cadeado (símbolos do poema físico: estrela, lua cortada, grok, vórtice = 2,0,4,5)
 def verificar_cadeado(sequencia):
     if not enigmas_concluidos["binario"]:
         return "ACESSO NEGADO: Decodifique os dados binários primeiro."
@@ -129,9 +129,10 @@ def verificar_cadeado(sequencia):
     if sequencia == ["2", "0", "4", "5"]:
         enigmas_concluidos["cadeado"] = True
         return "CADEADO ABERTO. SISTEMA TOTALMENTE DESBLOQUEADO."
+    print("[CADEADO] combinação recebida (errada):", sequencia, "| esperada: ['2', '0', '4', '5']")
     return "COMBINAÇÃO INCORRETA. O CADEADO NÃO ABRIU."
 
-# ENIGMA 7: Fuga
+# FINAL: Fuga
 def iniciar_fuga(confirmacao):
     if not enigmas_concluidos["cadeado"]:
         return "ACESSO NEGADO: Abra o cadeado físico primeiro."
@@ -193,4 +194,9 @@ def api_fuga(dados: MoldeFuga):
     mensagem = iniciar_fuga(dados.confirmacao)
     return {"mensagem": mensagem, "tempo": partida["tempo"], "id": partida["id"]}
 
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/", StaticFiles(directory=os.path.join(PASTA, "static"), html=True), name="static")
+
+# Permite iniciar com:  python logica_escape.py
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
