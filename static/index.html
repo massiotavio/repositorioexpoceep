@@ -271,7 +271,7 @@ box-shadow:0 3px 0 rgba(0,217,245,.28),0 20px 0 -9px rgba(0,0,0,.3),0 34px 60px 
 </head>
 <body>
 <div id="app"><div class="shell">
-<header class="topbar"><div class="brand">CHRONOS LAB<small>TEMPORAL SECURITY DIVISION // 01</small></div><div class="hright"><div class="timer" id="timer"><small>TEMPO RESTANTE</small><span id="timerText">10:00</span></div><div class="online" id="online">SYSTEM ONLINE</div></div></header>
+<header class="topbar"><div class="brand">CHRONOS LAB<small>TEMPORAL SECURITY DIVISION // 01</small></div><div class="hright"><div class="timer" id="timer"><small>TEMPO RESTANTE</small><span id="timerText">10:00</span></div><button class="music-pick" id="mute" type="button">♪ SOM</button><div class="online" id="online">SYSTEM ONLINE</div></div></header>
 <main>
 <div class="progress" id="progress"><span class="done"></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
 <section class="screen active" id="s0"><div class="hero">
@@ -326,12 +326,41 @@ box-shadow:0 3px 0 rgba(0,217,245,.28),0 20px 0 -9px rgba(0,0,0,.3),0 34px 60px 
 <footer class="footer"><span>CHRONOS LAB // TEMPORAL SECURITY</span><span id="clock">SYSTEM TIME // --:--:--</span></footer>
 </div></div>
 <script>
+/* ---------- TRILHA SONORA (3 faixas, guiada pelo timer) ----------
+   normal   -> do início até restarem 2:30 (7:30 de jogo). O arquivo normal.mp3 já vem montado: começa em 2:02 da música
+   original e, em 5:25, volta para esse ponto com crossfade em cima da batida (130 BPM), sem corte
+   urgencia -> de 2:30 restantes até o fim do tempo
+   final    -> tela final (ranking). Tempo esgotado = silêncio. */
+const Trilha=(function(){
+  const LIMITE_URGENCIA=150, VOL=.6;
+  const F={normal:['audio/normal.mp3',true],urgencia:['audio/urgencia.mp3',true],final:['audio/final.mp3',false]};
+  const A={};for(const k in F){const a=new Audio(F[k][0]);a.loop=F[k][1];a.preload='auto';a.volume=0;A[k]=a;}
+  let atual=null,ativo=false,mudo=false;
+  function fade(a,alvo,ms,fim){clearInterval(a._f);const ini=a.volume,t0=performance.now();
+    a._f=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/ms);a.volume=Math.max(0,Math.min(1,ini+(alvo-ini)*k));if(k>=1){clearInterval(a._f);if(fim)fim();}},50);}
+  function tocar(k,ms){if(atual===k)return;const ant=atual?A[atual]:null,n=A[k];atual=k;
+    if(ant)fade(ant,0,ms,()=>{if(A[atual]!==ant)ant.pause();});
+    n.currentTime=0;const p=n.play();if(p&&p.catch)p.catch(()=>{});fade(n,VOL,ms);}
+  function parar(ms){ativo=false;const a=atual?A[atual]:null;atual=null;if(a)fade(a,0,ms,()=>a.pause());}
+  function setMudo(m){mudo=m;for(const k in A)A[k].muted=m;const b=document.getElementById('mute');if(b)b.textContent=m?'♪ MUDO':'♪ SOM';}
+  // se o navegador bloqueou o autoplay, tenta de novo no próximo clique
+  document.addEventListener('pointerdown',()=>{if(atual&&A[atual].paused&&!A[atual].ended){const p=A[atual].play();if(p&&p.catch)p.catch(()=>{});}},true);
+  document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('mute');if(b)b.onclick=()=>setMudo(!mudo);});
+  return{
+    iniciar(t){if(ativo||atual==='final')return;ativo=true;tocar(t<=LIMITE_URGENCIA?'urgencia':'normal',600);},
+    tempo(t){if(ativo&&t<=LIMITE_URGENCIA)tocar('urgencia',1500);},
+    final(){ativo=false;tocar('final',900);},
+    esgotado(){parar(1200);},
+    estado(){return{ativo,atual,mudo};}
+  };
+})();
+
 let symbolSeq=[],circuitSeq=[],code='';
 let timeLeft=600,timerId=null;
-function renderTimer(){const t=document.getElementById('timer');document.getElementById('timerText').textContent=String(Math.floor(timeLeft/60)).padStart(2,'0')+':'+String(timeLeft%60).padStart(2,'0');t.classList.toggle('warn',timeLeft<=60&&timeLeft>0);}
-function startTimer(){if(timerId)return;timerId=setInterval(()=>{timeLeft--;renderTimer();if(timeLeft<=0){stopTimer();document.getElementById('timeout').classList.add('show');document.getElementById('online').textContent='SYSTEM LOCKED';}},1000);}
+function renderTimer(){const t=document.getElementById('timer');document.getElementById('timerText').textContent=String(Math.floor(timeLeft/60)).padStart(2,'0')+':'+String(timeLeft%60).padStart(2,'0');Trilha.tempo(timeLeft);t.classList.toggle('warn',timeLeft<=60&&timeLeft>0);}
+function startTimer(){if(timerId)return;timerId=setInterval(()=>{timeLeft--;renderTimer();if(timeLeft<=0){stopTimer();document.getElementById('timeout').classList.add('show');Trilha.esgotado();document.getElementById('online').textContent='SYSTEM LOCKED';}},1000);}
 function stopTimer(){clearInterval(timerId);timerId=null;}
-function go(n){if(n>=1&&n<=5)startTimer();if(n===6){stopTimer();document.getElementById('timer').classList.remove('warn');document.getElementById('timer').classList.add('done');}if(n===7){const u=600-timeLeft;document.getElementById('endTime').textContent=String(Math.floor(u/60)).padStart(2,'0')+':'+String(u%60).padStart(2,'0');document.getElementById('endRank').textContent=u<240?'AGENTE DE ELITE':u<420?'AGENTE VETERANO':'AGENTE RECRUTA';}document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById('s'+n).classList.add('active');document.querySelectorAll('#progress span').forEach((x,i)=>x.classList.toggle('done',i<=n));document.getElementById('online').textContent=n===7?'SYSTEM OFFLINE':n===6?'ALL SYSTEMS RESTORED':'SYSTEM ONLINE';window.scrollTo({top:0,behavior:'smooth'});if(n===7)FX.end.forEach(f=>f());}
+function go(n){if(n>=1&&n<=5){startTimer();Trilha.iniciar(timeLeft);}if(n===6){stopTimer();document.getElementById('timer').classList.remove('warn');document.getElementById('timer').classList.add('done');}if(n===7){const u=600-timeLeft;document.getElementById('endTime').textContent=String(Math.floor(u/60)).padStart(2,'0')+':'+String(u%60).padStart(2,'0');document.getElementById('endRank').textContent=u<240?'AGENTE DE ELITE':u<420?'AGENTE VETERANO':'AGENTE RECRUTA';}document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById('s'+n).classList.add('active');document.querySelectorAll('#progress span').forEach((x,i)=>x.classList.toggle('done',i<=n));document.getElementById('online').textContent=n===7?'SYSTEM OFFLINE':n===6?'ALL SYSTEMS RESTORED':'SYSTEM ONLINE';window.scrollTo({top:0,behavior:'smooth'});if(n===7)FX.end.forEach(f=>f());}
 const symbols=[{name:'CÍRCULO',shape:'circle',v:'●'},{name:'TRIÂNGULO',shape:'triangle',v:'▲'},{name:'QUADRADO',shape:'square',v:'■'},{name:'PENTÁGONO',shape:'pentagon',v:'⬟'}];
 function renderSymbols(){document.getElementById('symbolOptions').innerHTML=symbols.map((s,i)=>`<button class="symbol" aria-label="${s.name}" onclick="pickSymbol(${i})"><span class="shape ${s.shape}"></span></button>`).join('');document.getElementById('slots').innerHTML=Array.from({length:4},(_,i)=>`<div class="slot ${symbolSeq[i]!==undefined?'filled':''}">${symbolSeq[i]!==undefined?`<span class="shape ${symbols[symbolSeq[i]].shape}"></span>`:''}</div>`).join('');}
 function pickSymbol(i){if(symbolSeq.length<4){symbolSeq.push(i);renderSymbols();}}
@@ -416,7 +445,7 @@ async function shutdown(){
     const m=await post('/api/fuga',{confirmacao:'Sim'});
     if(!m.includes('ESCAPARAM')){b.disabled=false;b.textContent='INITIATE SHUTDOWN';bad('f6',m==='ERRO_CONEXAO'?'SEM CONEXÃO COM O SERVIDOR':'ACESSO NEGADO // CONCLUA OS ENIGMAS');return;}
     document.getElementById('online').textContent='SYSTEM OFFLINE';good('f6','LABORATORY UNLOCKED // EXPERIMENT COMPLETE');document.querySelector('.shell').style.borderColor='rgba(67,245,162,.6)';
-    setTimeout(()=>{go(7);
+    setTimeout(()=>{go(7);Trilha.final(); /* música final: só aqui, após o botão de fuga ser aceito pelo servidor */
         if(typeof ultimaResp.tempo==='number')document.getElementById('endTime').textContent=fmtTempo(ultimaResp.tempo);
         document.getElementById('endGroup').textContent='GRUPO: '+grupoNome.toUpperCase();
         loadRanking('rankEnd',10,ultimaResp.id);},1800);
@@ -483,21 +512,6 @@ document.addEventListener('mouseleave',()=>{shell.style.transform='';seen=false}
 FX.good=()=>orbs(px,py,14);
 FX.bad=()=>burst(px,py,12,'#ff5364',true);
 FX.end.push(()=>{for(let k=0;k<5;k++)setTimeout(()=>orbs(R(W*.2,W*.8),R(H*.2,H*.6),12),k*220)});
-})();
-
-(function music(){
-const foot=document.querySelector('.footer'),inp=document.createElement('input'),btn=document.createElement('button');
-inp.type='file';inp.accept='audio/*';inp.hidden=true;btn.className='music-pick';btn.textContent='♪ CARREGAR MÚSICA';btn.onclick=()=>inp.click();foot.append(btn,inp);
-const mk=src=>Object.assign(new Audio(src),{loop:true});
-let audio=mk('Minecraft_Volume_Beta_-_Moog_City_2__mp3_pm_.mp3'),title='Moog City 2';
-inp.onchange=()=>{const f=inp.files[0];if(!f)return;audio.pause();audio=mk(URL.createObjectURL(f));title=/moog/i.test(f.name)?'Moog City 2':'Faixa carregada';btn.textContent='♪ '+f.name.slice(0,22).toUpperCase()};
-function ambient(){const ac=new(window.AudioContext||window.webkitAudioContext)(),out=ac.createGain(),dl=ac.createDelay(1),fb=ac.createGain(),sc=[261.63,293.66,329.63,392,440,523.25,587.33];
-out.gain.value=.5;dl.delayTime.value=.45;fb.gain.value=.45;dl.connect(fb);fb.connect(dl);out.connect(ac.destination);out.connect(dl);dl.connect(ac.destination);
-setInterval(()=>{const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime;o.frequency.value=sc[Math.random()*sc.length|0]/(Math.random()<.3?2:1);
-g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.22,t+.03);g.gain.exponentialRampToValueAtTime(.0008,t+3);o.connect(g);g.connect(out);o.start(t);o.stop(t+3.2)},900)}
-FX.end.push(async()=>{const card=document.createElement('div');card.className='np';document.querySelector('#s7 .ending .lead').after(card);
-let ok=false;try{await audio.play();ok=true}catch(e){try{ambient()}catch(e2){}}
-card.innerHTML=ok?`<small>♪ TOCANDO AGORA</small><b>${title}<br>C418</b>`:'<small>♪ TRILHA AMBIENTE</small><b>Moog City 2 — C418</b><i>Para ouvir a faixa original, carregue o arquivo no rodapé antes de terminar.</i>'});
 })();
 
 (function clicks(){
