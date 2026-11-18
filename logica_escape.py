@@ -121,15 +121,16 @@ def verificar_binario(palavra):
         return "PROTOCOLO DE FUGA AUTORIZADO. Acesso ao terminal final liberado."
     return "DADOS INVÁLIDOS. Tente novamente."
 
-# ENIGMA 5: Cadeado (símbolos do poema físico: estrela, lua cortada, grok, vórtice = 2,0,4,5)
+# ENIGMA 5: Cadeado - a resposta é a IMAGEM (nome do símbolo), não a posição no disco.
+# Ordem do poema: estrela -> lua cortada -> buraco negro (grok) -> vórtice
 def verificar_cadeado(sequencia):
     if not enigmas_concluidos["binario"]:
         return "ACESSO NEGADO: Decodifique os dados binários primeiro."
-    
-    if sequencia == ["2", "0", "4", "5"]:
+
+    if sequencia == ["correta_estrela", "correta_luacortada", "grok", "vortex"]:
         enigmas_concluidos["cadeado"] = True
         return "CADEADO ABERTO. SISTEMA TOTALMENTE DESBLOQUEADO."
-    print("[CADEADO] combinação recebida (errada):", sequencia, "| esperada: ['2', '0', '4', '5']")
+    print("[CADEADO] recebido (errado):", sequencia)
     return "COMBINAÇÃO INCORRETA. O CADEADO NÃO ABRIU."
 
 # FINAL: Fuga
